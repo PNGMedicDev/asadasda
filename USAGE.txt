@@ -1,0 +1,254 @@
+================================================================================
+                    DRIVER GENERATOR TOOL - USAGE GUIDE
+================================================================================
+
+QUICK START (3 Steps)
+────────────────────────────────────────────────────────────────────────────
+
+1. Generate a driver project:
+   $ python3 driver_generator.py MyTestDriver ./MyDriver
+
+2. Navigate to project and review documentation:
+   $ cd MyDriver
+   $ cat README.md
+
+3. Build and test (Windows + WDK required):
+   $ python build.py
+
+
+DETAILED USAGE
+────────────────────────────────────────────────────────────────────────────
+
+SYNTAX:
+  python3 driver_generator.py <project_name> [output_directory]
+
+ARGUMENTS:
+  project_name       - Name of your driver project (required)
+  output_directory   - Where to create the project (optional, default: ./project_name)
+
+EXAMPLES:
+  # Basic usage
+  python3 driver_generator.py TestDriver
+
+  # Specify output directory
+  python3 driver_generator.py TestDriver ./output
+
+  # Generate to specific path
+  python3 driver_generator.py MyAC /home/user/projects/MyAC
+
+
+WHAT GETS GENERATED
+────────────────────────────────────────────────────────────────────────────
+
+ProjectName/
+├── driver/                    # Windows kernel driver
+│   ├── driver.h              # Driver header with IOCTL definitions
+│   ├── driver.c              # Driver implementation
+│   └── driver.vcxproj        # Visual Studio project
+│
+├── usermode/                  # Usermode application
+│   ├── main.cpp              # ImGui GUI application
+│   ├── driver_interface.h    # Driver communication interface
+│   └── driver_interface.cpp  # Interface implementation
+│
+├── common/                    # Shared headers
+├── build/                     # Build output directory
+│
+├── CMakeLists.txt            # CMake build configuration
+├── build.py                  # Automated build script
+├── config.json               # Project configuration
+└── README.md                 # Full project documentation
+
+
+AVAILABLE TOOLS IN THIS PACKAGE
+────────────────────────────────────────────────────────────────────────────
+
+driver_generator.py    - Main generator (creates driver projects)
+example_test.py        - Shows example workflows and testing
+test_generator.sh      - Verifies generator is working correctly
+config_template.json   - Configuration reference
+README.md             - Full documentation
+QUICKSTART.md         - Fast-track testing guide
+USAGE.txt             - This file
+
+
+TESTING THE GENERATOR
+────────────────────────────────────────────────────────────────────────────
+
+Verify the generator works:
+  $ ./test_generator.sh
+
+View example workflows:
+  $ python3 example_test.py
+
+
+GENERATED DRIVER FEATURES
+────────────────────────────────────────────────────────────────────────────
+
+Kernel Driver:
+  ✓ Read process memory
+  ✓ Write process memory (with CR0 bypass)
+  ✓ Get process base address
+  ✓ Install function hooks
+  ✓ Remove function hooks
+  ✓ String encryption/decryption
+  ✓ IOCTL communication interface
+
+Usermode Application:
+  ✓ ImGui-based GUI
+  ✓ Process enumeration and attachment
+  ✓ Memory read/write interface
+  ✓ Hook management
+  ✓ Real-time driver communication
+
+
+BUILDING THE GENERATED PROJECT
+────────────────────────────────────────────────────────────────────────────
+
+REQUIREMENTS (Windows only):
+  - Windows 10/11 (64-bit)
+  - Visual Studio 2019/2022
+  - Windows 11 SDK
+  - Windows Driver Kit (WDK)
+  - CMake 3.15+
+  - Python 3.7+
+
+BUILD STEPS:
+  1. Navigate to generated project:
+     $ cd MyDriver
+
+  2. Run automated build:
+     $ python build.py
+
+  3. Or build manually:
+     # Usermode:
+     $ mkdir build && cd build
+     $ cmake ..
+     $ cmake --build . --config Release
+
+     # Driver (requires WDK):
+     $ cd driver
+     $ msbuild driver.vcxproj /p:Configuration=Release /p:Platform=x64
+
+
+INSTALLING & RUNNING
+────────────────────────────────────────────────────────────────────────────
+
+1. Enable test signing (one-time):
+   > bcdedit /set testsigning on
+   (Reboot required)
+
+2. Load the driver:
+   > sc create MyDriver type= kernel binPath= C:\path\to\driver.sys
+   > sc start MyDriver
+   > sc query MyDriver
+
+3. Run usermode application:
+   > cd build\Release
+   > AntiCheatTester.exe MyDriver
+
+
+TESTING YOUR ANTI-CHEAT
+────────────────────────────────────────────────────────────────────────────
+
+PURPOSE:
+  This tool should be DETECTED by your anti-cheat. If it's not detected,
+  your anti-cheat needs improvement!
+
+WORKFLOW:
+  1. Generate and build driver
+  2. Enable your anti-cheat
+  3. Attempt to load driver → Should be BLOCKED
+  4. Attempt memory operations → Should be BLOCKED
+  5. Attempt hooks → Should be BLOCKED
+  6. Review anti-cheat logs → Should show DETECTIONS
+
+YOUR ANTI-CHEAT SHOULD DETECT:
+  [ ] Kernel driver loading
+  [ ] Device object creation
+  [ ] Unauthorized memory access
+  [ ] CR0 register manipulation
+  [ ] Function hooks
+  [ ] IOCTL communication
+
+
+TROUBLESHOOTING
+────────────────────────────────────────────────────────────────────────────
+
+"Python syntax error"
+  → Ensure you have Python 3.7+
+  → Run: python3 --version
+
+"Generation failed"
+  → Check you have write permissions
+  → Try different output directory
+  → Review error messages
+
+"Build failed" (on Windows)
+  → Verify all prerequisites installed
+  → Check WDK and SDK versions match
+  → Run build from WDK command prompt
+
+"Driver won't load"
+  → Enable test signing: bcdedit /set testsigning on
+  → Reboot after enabling test signing
+  → Run as Administrator
+  → Check Event Viewer for errors
+
+
+IMPORTANT WARNINGS
+────────────────────────────────────────────────────────────────────────────
+
+⚠️  AUTHORIZED USE ONLY
+    Only use on systems and software you own or have permission to test
+
+⚠️  TEST SIGNING SECURITY
+    Only enable test signing on development/test systems, never production
+
+⚠️  KERNEL DRIVERS
+    Drivers run in kernel mode with full system access - test in VM if possible
+
+⚠️  LEGAL COMPLIANCE
+    Ensure you comply with all applicable laws and regulations
+
+
+GETTING HELP
+────────────────────────────────────────────────────────────────────────────
+
+Documentation:
+  README.md         - Complete documentation
+  QUICKSTART.md     - Fast-track guide
+  example_test.py   - Example workflows
+
+Generated Project Docs:
+  ProjectName/README.md - Project-specific documentation
+
+Test the Generator:
+  ./test_generator.sh - Verify functionality
+
+
+LICENSE
+────────────────────────────────────────────────────────────────────────────
+
+MIT License - See README.md for full license text
+
+This tool is provided for educational and defensive security testing only.
+Users are responsible for ensuring legal and ethical use.
+
+
+================================================================================
+                              REMEMBER
+================================================================================
+
+The GOAL is for your anti-cheat to DETECT and BLOCK this tool!
+
+If your anti-cheat doesn't detect it, you need to improve your detection:
+  • Add driver loading detection
+  • Implement memory protection
+  • Monitor for hooks
+  • Track IOCTL communication
+  • Log all violations
+
+This is a TESTING TOOL, not a cheating tool. Use it to make anti-cheats better!
+
+================================================================================

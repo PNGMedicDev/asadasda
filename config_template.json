@@ -1,0 +1,143 @@
+{
+  "project_info": {
+    "name": "Driver Generator Tool",
+    "version": "1.0.0",
+    "description": "Automated driver generator for anti-cheat testing",
+    "author": "Anti-Cheat Testing Framework",
+    "license": "MIT"
+  },
+  "driver_config": {
+    "default_pool_tag": "AUTO",
+    "supported_architectures": ["x64"],
+    "encryption_method": "XOR",
+    "key_length": 16
+  },
+  "generation_options": {
+    "include_hooks": true,
+    "include_memory_rw": true,
+    "include_process_base": true,
+    "include_string_encryption": true,
+    "include_gui": true,
+    "include_build_system": true
+  },
+  "testing_profiles": {
+    "basic": {
+      "description": "Basic memory read/write testing",
+      "features": ["read_memory", "write_memory", "get_process_base"]
+    },
+    "advanced": {
+      "description": "Full feature set including hooks",
+      "features": ["read_memory", "write_memory", "get_process_base", "hook_function", "unhook_function"]
+    },
+    "stealth": {
+      "description": "Maximum obfuscation for detection testing",
+      "features": ["read_memory", "write_memory", "get_process_base", "hook_function", "unhook_function"],
+      "obfuscation": ["string_encryption", "randomized_names", "code_obfuscation"]
+    }
+  },
+  "build_config": {
+    "cmake_min_version": "3.15",
+    "cpp_standard": "17",
+    "wdk_required": true,
+    "sdk_min_version": "10.0.19041.0"
+  },
+  "ioctl_codes": {
+    "read_memory": "0x800",
+    "write_memory": "0x801",
+    "get_process_base": "0x802",
+    "hook_function": "0x803",
+    "unhook_function": "0x804"
+  },
+  "detection_testing": {
+    "test_categories": [
+      {
+        "name": "Driver Detection",
+        "tests": [
+          "unsigned_driver_loading",
+          "device_object_enumeration",
+          "driver_signature_verification"
+        ]
+      },
+      {
+        "name": "Memory Protection",
+        "tests": [
+          "unauthorized_memory_access",
+          "cr0_manipulation",
+          "page_table_modification"
+        ]
+      },
+      {
+        "name": "Hook Detection",
+        "tests": [
+          "inline_hook_detection",
+          "iat_integrity",
+          "code_integrity_checks"
+        ]
+      },
+      {
+        "name": "Communication Monitoring",
+        "tests": [
+          "ioctl_monitoring",
+          "irp_request_analysis",
+          "handle_enumeration"
+        ]
+      }
+    ]
+  },
+  "security_warnings": {
+    "test_signing_required": true,
+    "admin_rights_required": true,
+    "authorized_use_only": true,
+    "educational_purpose": true
+  },
+  "documentation": {
+    "readme": "Comprehensive project documentation",
+    "quickstart": "Fast-track testing guide",
+    "examples": "Code examples and testing scenarios",
+    "api_reference": "Driver interface API documentation"
+  },
+  "supported_features": {
+    "kernel_driver": {
+      "read_process_memory": "Read memory from target process",
+      "write_process_memory": "Write memory to target process",
+      "get_process_base": "Get base address of target process",
+      "hook_function": "Install inline hooks in target process",
+      "unhook_function": "Remove installed hooks",
+      "cr0_bypass": "Bypass write protection for memory modification"
+    },
+    "usermode_interface": {
+      "gui_application": "ImGui-based graphical interface",
+      "process_enumeration": "Find and attach to target processes",
+      "memory_viewer": "View and modify process memory",
+      "hook_manager": "Manage function hooks",
+      "driver_communication": "IOCTL-based driver communication"
+    },
+    "security_features": {
+      "string_encryption": "XOR-based string obfuscation",
+      "random_pool_tags": "Randomized kernel pool tags",
+      "dynamic_keys": "Runtime-generated encryption keys"
+    }
+  },
+  "anti_cheat_testing": {
+    "objectives": [
+      "Verify driver detection mechanisms",
+      "Test memory protection effectiveness",
+      "Validate hook detection capabilities",
+      "Assess communication monitoring",
+      "Evaluate response time and actions"
+    ],
+    "success_criteria": [
+      "Driver loading is detected",
+      "Memory operations are blocked",
+      "Hooks are identified and prevented",
+      "Violations are logged",
+      "Appropriate action is taken (flag/ban)"
+    ]
+  },
+  "legal_disclaimer": {
+    "authorized_use_only": "This tool must only be used on systems and software you own or have explicit permission to test",
+    "educational_purpose": "Designed for educational purposes and defensive security testing",
+    "no_warranty": "Provided as-is without any warranty",
+    "user_responsibility": "Users are solely responsible for ensuring legal and ethical use"
+  }
+}
