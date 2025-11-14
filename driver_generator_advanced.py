@@ -90,10 +90,11 @@ class AdvancedEncryptor:
     @staticmethod
     def generate_junk_code() -> str:
         """Generate random junk code for obfuscation"""
+        loop_var = f"i_{secrets.token_hex(3)}"
         junk_ops = [
             f"volatile int junk_{secrets.token_hex(4)} = {random.randint(0, 0xFFFF)};",
             f"if ({random.randint(0, 100)} > 200) {{ return; }}",
-            f"for(int i_{secrets.token_hex(3)}=0; i_{secrets.token_hex(3)}<0; i_{secrets.token_hex(3)}++) {{}}",
+            f"for(int {loop_var}=0; {loop_var}<0; {loop_var}++) {{}}",
             f"volatile ULONG pad_{secrets.token_hex(4)} = 0x{secrets.token_hex(8)};",
         ]
         return "\n    ".join(random.sample(junk_ops, k=random.randint(1, 3)))
