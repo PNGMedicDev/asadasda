@@ -80,6 +80,7 @@ class DriverGenerator:
         return f"""#pragma once
 
 #include <ntddk.h>
+#include <ntifs.h>
 #include <wdf.h>
 
 // Driver configuration
