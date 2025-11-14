@@ -82,6 +82,9 @@ class DriverGenerator:
 #include <ntifs.h>
 #include <wdf.h>
 
+// Manual declaration for undocumented kernel function
+NTKERNELAPI PVOID PsGetProcessSectionBaseAddress(PEPROCESS Process);
+
 // Driver configuration
 #define DRIVER_NAME "{self.config['driver_name']}"
 #define DEVICE_NAME L"{self.config['device_name']}"
