@@ -264,7 +264,6 @@ __forceinline VOID {self.obfuscator.obfuscate_name(f'decrypt_{var_name}', 'funct
 #define __{hdr_guard2}__
 
 #include <ntifs.h>
-#include <wdf.h>
 
 // Manual declaration for undocumented kernel function
 NTKERNELAPI PVOID PsGetProcessSectionBaseAddress(PEPROCESS Process);

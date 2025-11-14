@@ -80,7 +80,6 @@ class DriverGenerator:
         return f"""#pragma once
 
 #include <ntifs.h>
-#include <wdf.h>
 
 // Manual declaration for undocumented kernel function
 NTKERNELAPI PVOID PsGetProcessSectionBaseAddress(PEPROCESS Process);
