@@ -268,6 +268,10 @@ __forceinline VOID {self.obfuscator.obfuscate_name(f'decrypt_{var_name}', 'funct
 // Manual declaration for undocumented kernel function
 NTKERNELAPI PVOID PsGetProcessSectionBaseAddress(PEPROCESS Process);
 
+// Kernel mode type definitions
+typedef unsigned char BYTE;
+typedef BYTE *PBYTE;
+
 // Obfuscated configuration
 #define {self.obfuscator.obfuscate_name('POOL_TAG', 'define')} '{self.config['pool_tag']}'
 #define {self.obfuscator.obfuscate_name('DEVICE_TYPE', 'define')} FILE_DEVICE_UNKNOWN

@@ -84,6 +84,10 @@ class DriverGenerator:
 // Manual declaration for undocumented kernel function
 NTKERNELAPI PVOID PsGetProcessSectionBaseAddress(PEPROCESS Process);
 
+// Kernel mode type definitions
+typedef unsigned char BYTE;
+typedef BYTE *PBYTE;
+
 // Driver configuration
 #define DRIVER_NAME "{self.config['driver_name']}"
 #define DEVICE_NAME L"{self.config['device_name']}"
