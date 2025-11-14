@@ -914,6 +914,30 @@ UINT64 GetKernelExport(UINT64 moduleBase, const std::string& exportName) {
         """Generate main program with drag-and-drop interface"""
         return """#include "mapper.h"
 #include <conio.h>
+#include <commdlg.h>
+
+std::string OpenFileDialog() {
+    OPENFILENAMEA ofn;
+    char szFile[MAX_PATH] = {0};
+
+    ZeroMemory(&ofn, sizeof(ofn));
+    ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner = NULL;
+    ofn.lpstrFile = szFile;
+    ofn.nMaxFile = sizeof(szFile);
+    ofn.lpstrFilter = "Driver Files (*.sys)\\0*.sys\\0All Files (*.*)\\0*.*\\0";
+    ofn.nFilterIndex = 1;
+    ofn.lpstrFileTitle = NULL;
+    ofn.nMaxFileTitle = 0;
+    ofn.lpstrInitialDir = NULL;
+    ofn.lpstrTitle = "Select Driver File to Map";
+    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
+
+    if (GetOpenFileNameA(&ofn) == TRUE) {
+        return std::string(ofn.lpstrFile);
+    }
+    return "";
+}
 
 void PrintBanner() {
     system("cls");
@@ -941,7 +965,8 @@ void PrintUsage() {
     std::cout << "  " << COLOR_GREEN << "Drag and drop" << COLOR_RESET
               << " a .sys driver file onto this executable" << std::endl;
     std::cout << "  OR" << std::endl;
-    std::cout << "  " << COLOR_GREEN << "mapper.exe <driver.sys>" << COLOR_RESET << std::endl;
+    std::cout << "  " << COLOR_GREEN << "Double-click" << COLOR_RESET
+              << " and select file from dialog" << std::endl;
     std::cout << std::endl;
 }
 
@@ -971,15 +996,25 @@ void PrintDetectionChecklist() {
 int main(int argc, char* argv[]) {
     PrintBanner();
 
-    if (argc < 2) {
-        LOG_ERROR("No driver file specified!");
-        PrintUsage();
-        std::cout << std::endl << "Press any key to exit...";
-        _getch();
-        return 1;
+    std::string driverPath;
+
+    // Check if file was dragged onto the exe
+    if (argc >= 2) {
+        driverPath = argv[1];
+    } else {
+        // No file dragged, open file picker dialog
+        LOG_INFO("No file specified - opening file picker...");
+        std::cout << std::endl;
+        driverPath = OpenFileDialog();
+
+        if (driverPath.empty()) {
+            LOG_ERROR("No file selected!");
+            std::cout << std::endl << "Press any key to exit...";
+            _getch();
+            return 1;
+        }
     }
 
-    std::string driverPath = argv[1];
     LOG_INFO("Driver file: " << driverPath);
     std::cout << std::endl;
 
@@ -1088,6 +1123,7 @@ target_include_directories(mapper PRIVATE
 # Link libraries
 target_link_libraries(mapper
     ntdll
+    comdlg32
 )
 
 # Output to build directory

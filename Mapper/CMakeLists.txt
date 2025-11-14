@@ -20,6 +20,7 @@ target_include_directories(mapper PRIVATE
 # Link libraries
 target_link_libraries(mapper
     ntdll
+    comdlg32
 )
 
 # Output to build directory
