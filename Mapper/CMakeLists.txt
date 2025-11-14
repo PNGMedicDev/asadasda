@@ -11,7 +11,6 @@ add_executable(mapper
     src/pe_parser.cpp
     src/mapper.cpp
     src/utils.cpp
-    src/downloader.cpp
 )
 
 target_include_directories(mapper PRIVATE
@@ -22,7 +21,6 @@ target_include_directories(mapper PRIVATE
 target_link_libraries(mapper
     ntdll
     comdlg32
-    wininet
 )
 
 # Output to build directory

@@ -82,31 +82,35 @@ void PrintDetectionChecklist() {
 int main(int argc, char* argv[]) {
     PrintBanner();
 
-    // Check for vulnerable drivers, download if missing
-    namespace fs = std::filesystem;
-    bool hasDrivers = fs::exists("vulnerable_drivers/gdrv.sys") ||
-                      fs::exists("vulnerable_drivers/iqvw64e.sys") ||
-                      fs::exists("vulnerable_drivers/RTCore64.sys");
+    // Check for vulnerable drivers (using ifstream instead of filesystem)
+    auto fileExists = [](const std::string& path) {
+        std::ifstream f(path);
+        return f.good();
+    };
+
+    bool hasDrivers = fileExists("vulnerable_drivers/gdrv.sys") ||
+                      fileExists("vulnerable_drivers/iqvw64e.sys") ||
+                      fileExists("vulnerable_drivers/RTCore64.sys");
 
     if (!hasDrivers) {
         LOG_WARNING("No vulnerable drivers found!");
-        LOG_INFO("First run detected - downloading vulnerable drivers...");
         std::cout << std::endl;
-
-        if (!DriverDownloader::DownloadAllDrivers()) {
-            LOG_ERROR("Failed to download vulnerable drivers");
-            LOG_INFO("You can manually download and place them in vulnerable_drivers\\");
-            std::cout << std::endl << "Press any key to exit...";
-            _getch();
-            return 1;
-        }
-
-        LOG_SUCCESS("Vulnerable drivers ready!");
+        LOG_INFO("Please download a vulnerable driver and place it in vulnerable_drivers\\\\");
         std::cout << std::endl;
-        std::cout << "Press any key to continue...";
+        std::cout << COLOR_YELLOW << "Recommended drivers (works on AMD/Intel):" << COLOR_RESET << std::endl;
+        std::cout << "  1. " << COLOR_GREEN << "gdrv.sys" << COLOR_RESET << " - Gigabyte (most popular)" << std::endl;
+        std::cout << "  2. " << COLOR_GREEN << "RTCore64.sys" << COLOR_RESET << " - MSI Afterburner" << std::endl;
+        std::cout << "  3. " << COLOR_GREEN << "iqvw64e.sys" << COLOR_RESET << " - Intel Network Adapter" << std::endl;
+        std::cout << std::endl;
+        std::cout << COLOR_CYAN << "Where to get them:" << COLOR_RESET << std::endl;
+        std::cout << "  • https://www.loldrivers.io/ (vulnerable driver database)" << std::endl;
+        std::cout << "  • Extract from MSI Afterburner installation (RTCore64.sys)" << std::endl;
+        std::cout << "  • Search GitHub for 'vulnerable kernel drivers' repositories" << std::endl;
+        std::cout << std::endl;
+        std::cout << COLOR_RED << "⚠️  Only use for testing YOUR OWN anti-cheat!" << COLOR_RESET << std::endl;
+        std::cout << std::endl << "Press any key to exit...";
         _getch();
-        system("cls");
-        PrintBanner();
+        return 1;
     }
 
     std::string driverPath;

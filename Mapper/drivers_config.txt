@@ -1,11 +1,33 @@
-# Vulnerable Driver Download Configuration
-# Format: filename|url|description
-# Lines starting with # or ; are comments
+# Manual Mapper - Vulnerable Driver Information
 #
-# Default drivers (already preset in code):
-# gdrv.sys - Works on AMD/Intel (recommended)
-# iqvw64e.sys - Works on AMD/Intel  
-# RTCore64.sys - Works on AMD/Intel
+# This mapper requires a vulnerable signed kernel driver to function.
+# Place one of these drivers in the vulnerable_drivers\ folder.
 #
-# Add your own drivers below:
-# example.sys|https://example.com/driver.sys|Description here
+# ========================================================================
+# RECOMMENDED DRIVERS (All work on AMD and Intel systems):
+# ========================================================================
+#
+# 1. gdrv.sys (Gigabyte - MOST POPULAR)
+#    - Where: https://www.loldrivers.io/ (search for "gdrv")
+#    - Or: Search GitHub for "gdrv.sys vulnerable driver"
+#    - SHA256: Check loldrivers.io for hash verification
+#
+# 2. RTCore64.sys (MSI Afterburner)
+#    - Where: Install MSI Afterburner, extract from installation folder
+#    - Path: C:\Program Files (x86)\MSI Afterburner\RTCore64.sys
+#    - Safe: Legitimate MSI software (but has vulnerability)
+#
+# 3. iqvw64e.sys (Intel Network Adapter Diagnostic)
+#    - Where: https://www.loldrivers.io/ (search for "iqvw64e")
+#    - Older Intel diagnostic tool driver
+#
+# ========================================================================
+# IMPORTANT:
+# ========================================================================
+# - Only use for testing YOUR OWN anti-cheat on YOUR system
+# - These are KNOWN vulnerable drivers - your anti-cheat MUST detect them
+# - Microsoft maintains a blocklist for these drivers
+# - EAC, BattlEye, Vanguard all detect and block these
+#
+# If your anti-cheat doesn't detect these drivers loading, it's not
+# EAC-level yet and needs improvement!
