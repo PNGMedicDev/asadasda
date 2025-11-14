@@ -79,7 +79,6 @@ class DriverGenerator:
         """Generate main driver header"""
         return f"""#pragma once
 
-#include <ntddk.h>
 #include <ntifs.h>
 #include <wdf.h>
 
