@@ -1,0 +1,11 @@
+# Vulnerable Driver Download Configuration
+# Format: filename|url|description
+# Lines starting with # or ; are comments
+#
+# Default drivers (already preset in code):
+# gdrv.sys - Works on AMD/Intel (recommended)
+# iqvw64e.sys - Works on AMD/Intel  
+# RTCore64.sys - Works on AMD/Intel
+#
+# Add your own drivers below:
+# example.sys|https://example.com/driver.sys|Description here

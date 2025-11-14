@@ -5,10 +5,23 @@
 
 namespace VulnDriver {
 
-// Intel iqvw64e.sys style vulnerable driver
+// Vulnerable driver info
+struct DriverInfo {
+    const char* name;
+    const char* filename;
+    const char* deviceName;
+    const char* description;
+};
+
+// Supported vulnerable drivers (tries in order)
+static DriverInfo g_supportedDrivers[] = {
+    {"gdrv", "gdrv.sys", "\\\\.\\GDrv", "Gigabyte - works on AMD/Intel (recommended)"},
+    {"iqvw64e", "iqvw64e.sys", "\\\\.\\Nal", "Intel - works on AMD/Intel"},
+    {"RTCore64", "RTCore64.sys", "\\\\.\\RTCore64", "MSI Afterburner - works on AMD/Intel"}
+};
+
 static HANDLE g_DriverHandle = INVALID_HANDLE_VALUE;
-static const char* DRIVER_NAME = "iqvw64e";
-static const char* DEVICE_NAME = "\\\\.\\Nal";
+static DriverInfo* g_ActiveDriver = nullptr;
 
 // IOCTL codes for vulnerable driver
 #define IOCTL_READ_MEMORY  CTL_CODE(FILE_DEVICE_UNKNOWN, 0x801, METHOD_BUFFERED, FILE_ANY_ACCESS)
@@ -27,71 +40,99 @@ struct MEMORY_OPERATION {
 
 bool LoadVulnerableDriver() {
     LOG_INFO("Loading vulnerable driver for kernel access...");
+    std::cout << std::endl;
 
-    // Try to open existing driver device
-    g_DriverHandle = CreateFileA(
-        DEVICE_NAME,
-        GENERIC_READ | GENERIC_WRITE,
-        0,
-        NULL,
-        OPEN_EXISTING,
-        FILE_ATTRIBUTE_NORMAL,
-        NULL
-    );
+    // Try each supported driver in order
+    for (size_t i = 0; i < sizeof(g_supportedDrivers) / sizeof(DriverInfo); i++) {
+        DriverInfo& driver = g_supportedDrivers[i];
 
-    if (g_DriverHandle == INVALID_HANDLE_VALUE) {
-        LOG_WARNING("Driver device not found, attempting to load driver...");
+        LOG_INFO("Trying: " << driver.filename);
+        LOG_DEBUG("  " << driver.description);
 
-        // Load the vulnerable driver
-        SC_HANDLE scManager = OpenSCManagerA(NULL, NULL, SC_MANAGER_ALL_ACCESS);
-        if (!scManager) {
-            LOG_ERROR("Failed to open SC Manager");
-            return false;
+        // Check if driver file exists
+        std::string driverPath = "vulnerable_drivers\\" + std::string(driver.filename);
+        std::ifstream test(driverPath);
+        if (!test.good()) {
+            LOG_WARNING("  Driver file not found, skipping...");
+            std::cout << std::endl;
+            continue;
         }
+        test.close();
 
-        SC_HANDLE scService = CreateServiceA(
-            scManager,
-            DRIVER_NAME,
-            DRIVER_NAME,
-            SERVICE_ALL_ACCESS,
-            SERVICE_KERNEL_DRIVER,
-            SERVICE_DEMAND_START,
-            SERVICE_ERROR_IGNORE,
-            "vulnerable_drivers\\iqvw64e.sys",
-            NULL, NULL, NULL, NULL, NULL
+        // Try to open existing driver device
+        g_DriverHandle = CreateFileA(
+            driver.deviceName,
+            GENERIC_READ | GENERIC_WRITE,
+            0,
+            NULL,
+            OPEN_EXISTING,
+            FILE_ATTRIBUTE_NORMAL,
+            NULL
         );
 
-        if (!scService) {
-            scService = OpenServiceA(scManager, DRIVER_NAME, SERVICE_ALL_ACCESS);
-        }
+        if (g_DriverHandle == INVALID_HANDLE_VALUE) {
+            LOG_DEBUG("  Device not found, attempting to load...");
 
-        if (scService) {
-            SERVICE_STATUS status;
-            StartServiceA(scService, 0, NULL);
-            Sleep(500);
+            // Load the vulnerable driver
+            SC_HANDLE scManager = OpenSCManagerA(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+            if (!scManager) {
+                LOG_ERROR("  Failed to open SC Manager (run as Administrator!)");
+                std::cout << std::endl;
+                continue;
+            }
 
-            g_DriverHandle = CreateFileA(
-                DEVICE_NAME,
-                GENERIC_READ | GENERIC_WRITE,
-                0, NULL,
-                OPEN_EXISTING,
-                FILE_ATTRIBUTE_NORMAL,
-                NULL
+            SC_HANDLE scService = CreateServiceA(
+                scManager,
+                driver.name,
+                driver.name,
+                SERVICE_ALL_ACCESS,
+                SERVICE_KERNEL_DRIVER,
+                SERVICE_DEMAND_START,
+                SERVICE_ERROR_IGNORE,
+                driverPath.c_str(),
+                NULL, NULL, NULL, NULL, NULL
             );
 
-            CloseServiceHandle(scService);
+            if (!scService) {
+                scService = OpenServiceA(scManager, driver.name, SERVICE_ALL_ACCESS);
+            }
+
+            if (scService) {
+                SERVICE_STATUS status;
+                StartServiceA(scService, 0, NULL);
+                Sleep(500);
+
+                g_DriverHandle = CreateFileA(
+                    driver.deviceName,
+                    GENERIC_READ | GENERIC_WRITE,
+                    0, NULL,
+                    OPEN_EXISTING,
+                    FILE_ATTRIBUTE_NORMAL,
+                    NULL
+                );
+
+                CloseServiceHandle(scService);
+            }
+
+            CloseServiceHandle(scManager);
         }
 
-        CloseServiceHandle(scManager);
+        if (g_DriverHandle != INVALID_HANDLE_VALUE) {
+            g_ActiveDriver = &driver;
+            std::cout << std::endl;
+            LOG_SUCCESS("✓ Loaded: " << driver.filename);
+            LOG_SUCCESS("Kernel R/W access acquired!");
+            LOG_WARNING("Your anti-cheat should have detected this!");
+            std::cout << std::endl;
+            return true;
+        }
+
+        LOG_WARNING("  Failed to load, trying next...");
+        std::cout << std::endl;
     }
 
-    if (g_DriverHandle != INVALID_HANDLE_VALUE) {
-        LOG_SUCCESS("Vulnerable driver loaded - kernel R/W access acquired!");
-        LOG_WARNING("Your anti-cheat should have detected this!");
-        return true;
-    }
-
-    LOG_ERROR("Failed to load vulnerable driver");
+    LOG_ERROR("Failed to load any vulnerable driver");
+    LOG_INFO("Available drivers: gdrv.sys, iqvw64e.sys, RTCore64.sys");
     return false;
 }
 
@@ -101,16 +142,19 @@ bool UnloadVulnerableDriver() {
         g_DriverHandle = INVALID_HANDLE_VALUE;
     }
 
-    SC_HANDLE scManager = OpenSCManagerA(NULL, NULL, SC_MANAGER_ALL_ACCESS);
-    if (scManager) {
-        SC_HANDLE scService = OpenServiceA(scManager, DRIVER_NAME, SERVICE_ALL_ACCESS);
-        if (scService) {
-            SERVICE_STATUS status;
-            ControlService(scService, SERVICE_CONTROL_STOP, &status);
-            DeleteService(scService);
-            CloseServiceHandle(scService);
+    if (g_ActiveDriver) {
+        SC_HANDLE scManager = OpenSCManagerA(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+        if (scManager) {
+            SC_HANDLE scService = OpenServiceA(scManager, g_ActiveDriver->name, SERVICE_ALL_ACCESS);
+            if (scService) {
+                SERVICE_STATUS status;
+                ControlService(scService, SERVICE_CONTROL_STOP, &status);
+                DeleteService(scService);
+                CloseServiceHandle(scService);
+            }
+            CloseServiceHandle(scManager);
         }
-        CloseServiceHandle(scManager);
+        g_ActiveDriver = nullptr;
     }
 
     LOG_INFO("Vulnerable driver unloaded");

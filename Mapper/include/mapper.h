@@ -1,10 +1,14 @@
 #pragma once
 
 #include <Windows.h>
+#include <wininet.h>
 #include <iostream>
 #include <vector>
 #include <string>
 #include <fstream>
+#include <map>
+
+#pragma comment(lib, "wininet.lib")
 
 // Console colors
 #define COLOR_RESET   "\033[0m"
@@ -21,6 +25,20 @@
 #define LOG_ERROR(msg)   std::cout << COLOR_RED     << "[✗] " << msg << COLOR_RESET << std::endl
 #define LOG_WARNING(msg) std::cout << COLOR_YELLOW  << "[!] " << msg << COLOR_RESET << std::endl
 #define LOG_DEBUG(msg)   std::cout << COLOR_MAGENTA << "[*] " << msg << COLOR_RESET << std::endl
+
+// Driver downloader
+namespace DriverDownloader {
+    struct DriverInfo {
+        std::string filename;
+        std::string url;
+        std::string description;
+    };
+
+    bool DownloadFile(const std::string& url, const std::string& outputPath);
+    bool DownloadAllDrivers();
+    std::vector<DriverInfo> GetDriverList();
+    bool LoadConfig();
+}
 
 // Vulnerable driver interface
 namespace VulnDriver {

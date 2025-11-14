@@ -82,6 +82,33 @@ void PrintDetectionChecklist() {
 int main(int argc, char* argv[]) {
     PrintBanner();
 
+    // Check for vulnerable drivers, download if missing
+    namespace fs = std::filesystem;
+    bool hasDrivers = fs::exists("vulnerable_drivers/gdrv.sys") ||
+                      fs::exists("vulnerable_drivers/iqvw64e.sys") ||
+                      fs::exists("vulnerable_drivers/RTCore64.sys");
+
+    if (!hasDrivers) {
+        LOG_WARNING("No vulnerable drivers found!");
+        LOG_INFO("First run detected - downloading vulnerable drivers...");
+        std::cout << std::endl;
+
+        if (!DriverDownloader::DownloadAllDrivers()) {
+            LOG_ERROR("Failed to download vulnerable drivers");
+            LOG_INFO("You can manually download and place them in vulnerable_drivers\\");
+            std::cout << std::endl << "Press any key to exit...";
+            _getch();
+            return 1;
+        }
+
+        LOG_SUCCESS("Vulnerable drivers ready!");
+        std::cout << std::endl;
+        std::cout << "Press any key to continue...";
+        _getch();
+        system("cls");
+        PrintBanner();
+    }
+
     std::string driverPath;
 
     // Check if file was dragged onto the exe
@@ -147,7 +174,7 @@ int main(int argc, char* argv[]) {
     // Load vulnerable driver
     if (!VulnDriver::LoadVulnerableDriver()) {
         LOG_ERROR("Failed to load vulnerable driver");
-        LOG_INFO("Make sure iqvw64e.sys is in vulnerable_drivers folder");
+        LOG_INFO("Check vulnerable_drivers folder for gdrv.sys or iqvw64e.sys");
         std::cout << std::endl << "Press any key to exit...";
         _getch();
         return 1;

