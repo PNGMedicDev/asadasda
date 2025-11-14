@@ -873,22 +873,26 @@ This tool is for **testing your own anti-cheat only**. If your EAC-level anti-ch
 
         # Generate driver
         (self.output_dir / 'driver' / 'driver.h').write_text(
-            self.generate_obfuscated_driver_header()
+            self.generate_obfuscated_driver_header(),
+            encoding='utf-8'
         )
         (self.output_dir / 'driver' / 'driver.c').write_text(
-            self.generate_obfuscated_driver_source()
+            self.generate_obfuscated_driver_source(),
+            encoding='utf-8'
         )
         print("[+] Generated heavily obfuscated driver")
 
         # Save configuration
         (self.output_dir / 'config.json').write_text(
-            self.generate_obfuscated_config()
+            self.generate_obfuscated_config(),
+            encoding='utf-8'
         )
         print("[+] Saved obfuscation map")
 
         # Generate README
         (self.output_dir / 'README.md').write_text(
-            self.generate_readme()
+            self.generate_readme(),
+            encoding='utf-8'
         )
         print("[+] Generated documentation")
 

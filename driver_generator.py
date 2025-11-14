@@ -1451,32 +1451,32 @@ This is a testing tool. Contributions should focus on improving anti-cheat testi
         print("[+] Created directory structure")
 
         # Generate driver files
-        (self.output_dir / 'driver' / 'driver.h').write_text(self.generate_driver_header())
-        (self.output_dir / 'driver' / 'driver.c').write_text(self.generate_driver_source())
+        (self.output_dir / 'driver' / 'driver.h').write_text(self.generate_driver_header(), encoding='utf-8')
+        (self.output_dir / 'driver' / 'driver.c').write_text(self.generate_driver_source(), encoding='utf-8')
         print("[+] Generated driver source files")
 
         # Generate usermode files
-        (self.output_dir / 'usermode' / 'driver_interface.h').write_text(self.generate_usermode_header())
-        (self.output_dir / 'usermode' / 'driver_interface.cpp').write_text(self.generate_usermode_source())
-        (self.output_dir / 'usermode' / 'main.cpp').write_text(self.generate_imgui_app())
+        (self.output_dir / 'usermode' / 'driver_interface.h').write_text(self.generate_usermode_header(), encoding='utf-8')
+        (self.output_dir / 'usermode' / 'driver_interface.cpp').write_text(self.generate_usermode_source(), encoding='utf-8')
+        (self.output_dir / 'usermode' / 'main.cpp').write_text(self.generate_imgui_app(), encoding='utf-8')
         print("[+] Generated usermode source files")
 
         # Generate build files
-        (self.output_dir / 'CMakeLists.txt').write_text(self.generate_cmake())
-        (self.output_dir / 'build.py').write_text(self.generate_build_script())
+        (self.output_dir / 'CMakeLists.txt').write_text(self.generate_cmake(), encoding='utf-8')
+        (self.output_dir / 'build.py').write_text(self.generate_build_script(), encoding='utf-8')
         (self.output_dir / 'build.py').chmod(0o755)
         print("[+] Generated build system")
 
         # Generate documentation
-        (self.output_dir / 'README.md').write_text(self.generate_readme())
+        (self.output_dir / 'README.md').write_text(self.generate_readme(), encoding='utf-8')
         print("[+] Generated documentation")
 
         # Generate VS project (basic template)
-        (self.output_dir / 'driver' / 'driver.vcxproj').write_text(self.generate_vs_project())
+        (self.output_dir / 'driver' / 'driver.vcxproj').write_text(self.generate_vs_project(), encoding='utf-8')
         print("[+] Generated Visual Studio project template")
 
         # Save configuration
-        with open(self.output_dir / 'config.json', 'w') as f:
+        with open(self.output_dir / 'config.json', 'w', encoding='utf-8') as f:
             json.dump(self.config, f, indent=2)
         print("[+] Saved configuration")
 
