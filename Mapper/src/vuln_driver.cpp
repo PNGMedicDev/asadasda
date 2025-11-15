@@ -44,32 +44,48 @@ static DriverInfo* g_ActiveDriver = nullptr;
 #define IOCTL_READ_MEMORY  CTL_CODE(FILE_DEVICE_UNKNOWN, 0x801, METHOD_BUFFERED, FILE_ANY_ACCESS)
 #define IOCTL_WRITE_MEMORY CTL_CODE(FILE_DEVICE_UNKNOWN, 0x802, METHOD_BUFFERED, FILE_ANY_ACCESS)
 
-// Structures
+// Structures - C++ style for MSVC compatibility
 #pragma pack(push, 1)
-typedef struct _MEMORY_OPERATION {
+
+// Define structs first
+struct _MEMORY_OPERATION {
     UINT64 address;
     PVOID buffer;
     SIZE_T size;
     UINT64 result;
-} MEMORY_OPERATION, *PMEMORY_OPERATION;
+};
 
-typedef struct _AIDA64_PHYS_MEM_IO {
+struct _AIDA64_PHYS_MEM_IO {
     UINT64 PhysicalAddress;
     UINT32 Size;
     UINT32 Value;
-} AIDA64_PHYS_MEM_IO, *PAIDA64_PHYS_MEM_IO;
+};
 
-typedef struct _AIDA64_MAP_PHYS_MEM {
+struct _AIDA64_MAP_PHYS_MEM {
     UINT64 PhysicalAddress;
     UINT32 Size;
     UINT64 VirtualAddress;
-} AIDA64_MAP_PHYS_MEM, *PAIDA64_MAP_PHYS_MEM;
+};
 
-typedef struct _DBUTIL_READ_WRITE {
+struct _DBUTIL_READ_WRITE {
     UINT64 address;
     UINT32 value;
     UINT32 size;
-} DBUTIL_READ_WRITE, *PDBUTIL_READ_WRITE;
+};
+
+// Then create typedefs
+typedef struct _MEMORY_OPERATION MEMORY_OPERATION;
+typedef struct _MEMORY_OPERATION *PMEMORY_OPERATION;
+
+typedef struct _AIDA64_PHYS_MEM_IO AIDA64_PHYS_MEM_IO;
+typedef struct _AIDA64_PHYS_MEM_IO *PAIDA64_PHYS_MEM_IO;
+
+typedef struct _AIDA64_MAP_PHYS_MEM AIDA64_MAP_PHYS_MEM;
+typedef struct _AIDA64_MAP_PHYS_MEM *PAIDA64_MAP_PHYS_MEM;
+
+typedef struct _DBUTIL_READ_WRITE DBUTIL_READ_WRITE;
+typedef struct _DBUTIL_READ_WRITE *PDBUTIL_READ_WRITE;
+
 #pragma pack(pop)
 
 bool LoadVulnerableDriver() {
