@@ -31,10 +31,10 @@ static HANDLE g_DriverHandle = INVALID_HANDLE_VALUE;
 static DriverInfo* g_ActiveDriver = nullptr;
 
 // AIDA64 specific IOCTLs
-#define AIDA64_READ_PHYS_MEM    0x80112044
-#define AIDA64_WRITE_PHYS_MEM   0x8011204C
-#define AIDA64_MAP_PHYS_MEM     0x80112078
-#define AIDA64_UNMAP_PHYS_MEM   0x8011207C
+#define AIDA64_IOCTL_READ_PHYS_MEM    0x80112044
+#define AIDA64_IOCTL_WRITE_PHYS_MEM   0x8011204C
+#define AIDA64_IOCTL_MAP_PHYS_MEM     0x80112078
+#define AIDA64_IOCTL_UNMAP_PHYS_MEM   0x8011207C
 
 // DBUtil specific IOCTLs
 #define DBUTIL_IOCTL_READ  0x9B0C1EC4
@@ -44,47 +44,33 @@ static DriverInfo* g_ActiveDriver = nullptr;
 #define IOCTL_READ_MEMORY  CTL_CODE(FILE_DEVICE_UNKNOWN, 0x801, METHOD_BUFFERED, FILE_ANY_ACCESS)
 #define IOCTL_WRITE_MEMORY CTL_CODE(FILE_DEVICE_UNKNOWN, 0x802, METHOD_BUFFERED, FILE_ANY_ACCESS)
 
-// Structures - C++ style for MSVC compatibility
+// Structures - Pure C++ (no typedef needed)
 #pragma pack(push, 1)
 
-// Define structs first
-struct _MEMORY_OPERATION {
+struct MEMORY_OPERATION {
     UINT64 address;
     PVOID buffer;
     SIZE_T size;
     UINT64 result;
 };
 
-struct _AIDA64_PHYS_MEM_IO {
+struct AIDA64_PHYS_MEM_IO {
     UINT64 PhysicalAddress;
     UINT32 Size;
     UINT32 Value;
 };
 
-struct _AIDA64_MAP_PHYS_MEM {
+struct AIDA64_MAP_PHYS_MEM {
     UINT64 PhysicalAddress;
     UINT32 Size;
     UINT64 VirtualAddress;
 };
 
-struct _DBUTIL_READ_WRITE {
+struct DBUTIL_READ_WRITE {
     UINT64 address;
     UINT32 value;
     UINT32 size;
 };
-
-// Then create typedefs
-typedef struct _MEMORY_OPERATION MEMORY_OPERATION;
-typedef struct _MEMORY_OPERATION *PMEMORY_OPERATION;
-
-typedef struct _AIDA64_PHYS_MEM_IO AIDA64_PHYS_MEM_IO;
-typedef struct _AIDA64_PHYS_MEM_IO *PAIDA64_PHYS_MEM_IO;
-
-typedef struct _AIDA64_MAP_PHYS_MEM AIDA64_MAP_PHYS_MEM;
-typedef struct _AIDA64_MAP_PHYS_MEM *PAIDA64_MAP_PHYS_MEM;
-
-typedef struct _DBUTIL_READ_WRITE DBUTIL_READ_WRITE;
-typedef struct _DBUTIL_READ_WRITE *PDBUTIL_READ_WRITE;
 
 #pragma pack(pop)
 
@@ -306,7 +292,7 @@ bool ReadKernelMemory(UINT64 address, PVOID buffer, SIZE_T size) {
             DWORD bytesReturned = 0;
             if (!DeviceIoControl(
                 g_DriverHandle,
-                AIDA64_READ_PHYS_MEM,
+                AIDA64_IOCTL_READ_PHYS_MEM,
                 &io,
                 sizeof(io),
                 &io,
@@ -388,7 +374,7 @@ bool WriteKernelMemory(UINT64 address, PVOID buffer, SIZE_T size) {
             DWORD bytesReturned = 0;
             if (!DeviceIoControl(
                 g_DriverHandle,
-                AIDA64_WRITE_PHYS_MEM,
+                AIDA64_IOCTL_WRITE_PHYS_MEM,
                 &io,
                 sizeof(io),
                 &io,
@@ -478,7 +464,7 @@ UINT64 AllocateKernelMemory(SIZE_T size) {
         DWORD bytesReturned = 0;
         if (DeviceIoControl(
             g_DriverHandle,
-            AIDA64_MAP_PHYS_MEM,
+            AIDA64_IOCTL_MAP_PHYS_MEM,
             &mapOp,
             sizeof(mapOp),
             &mapOp,
@@ -536,7 +522,7 @@ bool FreeKernelMemory(UINT64 address) {
         DWORD bytesReturned = 0;
         return DeviceIoControl(
             g_DriverHandle,
-            AIDA64_UNMAP_PHYS_MEM,
+            AIDA64_IOCTL_UNMAP_PHYS_MEM,
             &unmapOp,
             sizeof(unmapOp),
             NULL,
