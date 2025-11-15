@@ -199,8 +199,9 @@ bool ResolveImports(PARSED_PE& pe) {
 
         UINT64 moduleBase = Utils::GetKernelModuleBase(moduleName);
         if (!moduleBase) {
-            LOG_ERROR("Failed to find kernel module: " << moduleName);
-            return false;
+            LOG_WARNING("Failed to find kernel module: " << moduleName);
+            importDesc++;
+            continue;
         }
 
         // Process thunks
