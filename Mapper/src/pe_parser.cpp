@@ -73,24 +73,35 @@ bool ProcessRelocations(PARSED_PE& pe, UINT64 newBase) {
     auto ntHeaders = (PIMAGE_NT_HEADERS64)pe.headers.data();
     auto relocDir = &ntHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC];
 
-    if (relocDir->Size == 0) {
-        LOG_WARNING("No relocation table found");
+    if (relocDir->Size == 0 || relocDir->VirtualAddress == 0) {
+        LOG_WARNING("No relocation table in PE headers");
         return true;
     }
+
+    LOG_DEBUG("Reloc directory: RVA=0x" << std::hex << relocDir->VirtualAddress << " Size=0x" << relocDir->Size);
 
     // Find section containing relocations
     BYTE* relocData = nullptr;
     for (auto& section : pe.sections) {
+        // Check if this section contains the relocation directory
+        UINT64 sectionEnd = section.virtualAddress + std::max(section.virtualSize, (UINT64)section.data.size());
+
+        LOG_DEBUG("Checking section at 0x" << std::hex << section.virtualAddress <<
+                  " size=0x" << section.virtualSize << " dataSize=0x" << section.data.size());
+
         if (section.virtualAddress <= relocDir->VirtualAddress &&
-            section.virtualAddress + section.virtualSize > relocDir->VirtualAddress) {
+            sectionEnd > relocDir->VirtualAddress) {
             UINT64 offset = relocDir->VirtualAddress - section.virtualAddress;
-            relocData = section.data.data() + offset;
-            break;
+            if (offset < section.data.size()) {
+                relocData = section.data.data() + offset;
+                LOG_SUCCESS("Found relocations in section at offset 0x" << std::hex << offset);
+                break;
+            }
         }
     }
 
     if (!relocData) {
-        LOG_ERROR("Relocation section not found");
+        LOG_ERROR("Relocation section not found in any PE section");
         return false;
     }
 
