@@ -69,8 +69,9 @@ bool ProcessRelocations(PARSED_PE& pe, UINT64 newBase) {
         return true;
     }
 
-    // Find relocation section
-    auto ntHeaders = (PIMAGE_NT_HEADERS64)pe.headers.data();
+    // Find relocation section - correctly parse NT headers from DOS header
+    auto dosHeader = (PIMAGE_DOS_HEADER)pe.headers.data();
+    auto ntHeaders = (PIMAGE_NT_HEADERS64)(pe.headers.data() + dosHeader->e_lfanew);
     auto relocDir = &ntHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC];
 
     if (relocDir->Size == 0 || relocDir->VirtualAddress == 0) {
@@ -148,7 +149,9 @@ bool ProcessRelocations(PARSED_PE& pe, UINT64 newBase) {
 bool ResolveImports(PARSED_PE& pe) {
     LOG_INFO("Resolving kernel imports...");
 
-    auto ntHeaders = (PIMAGE_NT_HEADERS64)pe.headers.data();
+    // Correctly parse NT headers from DOS header
+    auto dosHeader = (PIMAGE_DOS_HEADER)pe.headers.data();
+    auto ntHeaders = (PIMAGE_NT_HEADERS64)(pe.headers.data() + dosHeader->e_lfanew);
     auto importDir = &ntHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
 
     if (importDir->Size == 0) {
